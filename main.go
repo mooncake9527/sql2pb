@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/mooncake9527/sql2pb/cmd"
 	"log/slog"
 	"os"
-	"sql2pb/cmd"
 )
 
 func main() {
