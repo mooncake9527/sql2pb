@@ -1,7 +1,7 @@
 syntax = "proto3";
 package api.{{.PackageName}}.v1;
 
-option go_package = "./{{.PackageName}}pb";
+option go_package = ".api/{{.PackageName}}pb;{{.PackageName}}pb";
 // option csharp_namespace = "Assets.Script.Reborn.Proto.Cbpb";
 
 
