@@ -137,6 +137,8 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		_ = os.MkdirAll(out, os.ModePerm)
+
 		for _, serverTable := range serverTableData {
 			var ignoreTable = &IgnoreTable{}
 			if v, ok := icMap[serverTable.TableName]; ok {
