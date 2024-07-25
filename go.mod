@@ -1,6 +1,6 @@
 module github.com/mooncake9527/sql2pb
 
-go 1.22.5
+go 1.22
 
 require (
 	github.com/samber/lo v1.46.0
