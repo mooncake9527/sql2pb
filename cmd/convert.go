@@ -3,10 +3,10 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	tmpl "github.com/mooncake9527/sql2pb/template"
 	"github.com/samber/lo"
 	"log/slog"
 	"os"
-	tmpl "sql2pb/template"
 	"strings"
 	"text/template"
 
