@@ -1,7 +1,12 @@
 # sql2pb
 
+### 简介
 一个从mysql表结构生成protobuf文件的小工具,使用配置文件来指定表结构和生成的protobuf文件的输出目录等信息
 
+
+### 使用方法
+
+#### 方法一:
 安装
 ```shell
 go install github.com/mooncake9527/sql2pb
@@ -12,7 +17,23 @@ go install github.com/mooncake9527/sql2pb
 sql2pb proto -c config/config.yaml
 ```
 
-配置文件 config/config.yaml
+#### 方法二:
+
+使用go
+```shell
+
+git clone https://github.com/mooncake9527/sql2pb.git
+
+cd sql2pb
+go build -o sql2pb
+./sql2pb proto -c config/config.yaml
+
+```
+
+
+### 配置文件说明 
+
+config/config.yaml
 ```text
 out: ./out  # 生成文件的输出目录
 tpl: ./template/proto.tpl # 模板文件
