@@ -1,0 +1,155 @@
+syntax = "proto3";
+package api.ylCompany.v1;
+
+option go_package = "pb/ylCompanyPb;ylCompanyPb";
+// option csharp_namespace = "Assets.Script.Reborn.Proto.Cbpb";
+
+
+service companyUser {
+  // create CompanyUser
+  rpc Create(CreateCompanyUserReq) returns (CreateCompanyUserRsp) {}
+
+  // delete CompanyUser by id
+  rpc DeleteByID(DeleteCompanyUserByIDReq) returns (DeleteCompanyUserByIDRsp) {}
+
+  // delete CompanyUser by batch id
+  rpc DeleteByIDs(DeleteCompanyUserByIDsReq) returns (DeleteCompanyUserByIDsRsp) {}
+
+  // update CompanyUser by id
+  rpc UpdateByID(UpdateCompanyUserByIDReq) returns (UpdateCompanyUserByIDRsp) {}
+
+  // get CompanyUser by id
+  rpc GetByID(GetCompanyUserByIDReq) returns (GetCompanyUserByIDRsp) {}
+
+  // list of CompanyUser by batch id
+  rpc ListByIDs(ListCompanyUserByIDsReq) returns (ListCompanyUserByIDsRsp) {}
+}
+
+// create request
+message CreateCompanyUserReq {
+      int64 id = 1;
+      string userId = 2;
+      string companyId = 3;
+      string username = 4;
+      string name = 5;
+      string mobile = 6;
+      string email = 7;
+      string deptId = 8;
+      string roles = 9;
+      string avatar = 10;
+      int32 leaveStatus = 11;
+      int32 online = 12;
+      string usetimeLimit = 13;
+      string lastLoginAt = 14;
+      string createdAt = 15;
+      string updatedAt = 16;
+      int32 packageStatus = 17;
+}
+
+// create response
+message CreateCompanyUserRsp {
+}
+
+// delete request
+message DeleteCompanyUserByIDReq {
+  int64 id = 1;
+}
+
+// delete response
+message DeleteCompanyUserByIDRsp {
+
+}
+
+// delete list request
+message DeleteCompanyUserByIDsReq {
+  repeated int64 ids = 1;
+}
+
+// delete list response
+message DeleteCompanyUserByIDsRsp {
+
+}
+
+// update request
+message UpdateCompanyUserByIDReq {
+      int64 id = 1;
+      string userId = 2;
+      string companyId = 3;
+      string username = 4;
+      string name = 5;
+      string mobile = 6;
+      string email = 7;
+      string deptId = 8;
+      string roles = 9;
+      string avatar = 10;
+      int32 leaveStatus = 11;
+      int32 online = 12;
+      string usetimeLimit = 13;
+      string lastLoginAt = 14;
+      string createdAt = 15;
+      string updatedAt = 16;
+      int32 packageStatus = 17;
+}
+
+// update response
+message UpdateCompanyUserByIDRsp {
+
+}
+
+// get one request
+message GetCompanyUserByIDReq {
+  int64 id = 1;
+}
+
+// get one response
+message GetCompanyUserByIDRsp {
+      int64 id = 1;
+      string userId = 2;
+      string companyId = 3;
+      string username = 4;
+      string name = 5;
+      string mobile = 6;
+      string email = 7;
+      string deptId = 8;
+      string roles = 9;
+      string avatar = 10;
+      int32 leaveStatus = 11;
+      int32 online = 12;
+      string usetimeLimit = 13;
+      string lastLoginAt = 14;
+      string createdAt = 15;
+      string updatedAt = 16;
+      int32 packageStatus = 17;
+}
+
+
+// get list request
+message ListCompanyUserByIDsReq {
+    repeated int64 ids = 1;
+}
+
+// get list response
+message ListCompanyUserByIDsRsp {
+    repeated CompanyUser list = 1;
+}
+
+
+message CompanyUser {
+    int64 id = 1;
+    string userId = 2;
+    string companyId = 3;
+    string username = 4;
+    string name = 5;
+    string mobile = 6;
+    string email = 7;
+    string deptId = 8;
+    string roles = 9;
+    string avatar = 10;
+    int32 leaveStatus = 11;
+    int32 online = 12;
+    string usetimeLimit = 13;
+    string lastLoginAt = 14;
+    string createdAt = 15;
+    string updatedAt = 16;
+    int32 packageStatus = 17;
+}

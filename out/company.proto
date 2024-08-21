@@ -1,0 +1,135 @@
+syntax = "proto3";
+package api.ylCompany.v1;
+
+option go_package = "pb/ylCompanyPb;ylCompanyPb";
+// option csharp_namespace = "Assets.Script.Reborn.Proto.Cbpb";
+
+
+service company {
+  // create Company
+  rpc Create(CreateCompanyReq) returns (CreateCompanyRsp) {}
+
+  // delete Company by id
+  rpc DeleteByID(DeleteCompanyByIDReq) returns (DeleteCompanyByIDRsp) {}
+
+  // delete Company by batch id
+  rpc DeleteByIDs(DeleteCompanyByIDsReq) returns (DeleteCompanyByIDsRsp) {}
+
+  // update Company by id
+  rpc UpdateByID(UpdateCompanyByIDReq) returns (UpdateCompanyByIDRsp) {}
+
+  // get Company by id
+  rpc GetByID(GetCompanyByIDReq) returns (GetCompanyByIDRsp) {}
+
+  // list of Company by batch id
+  rpc ListByIDs(ListCompanyByIDsReq) returns (ListCompanyByIDsRsp) {}
+}
+
+// create request
+message CreateCompanyReq {
+      int32 id = 1;
+      string companyId = 2;
+      string name = 3;
+      string shortName = 4;
+      string onwer = 5;
+      int32 status = 6;
+      int32 lockStatus = 7;
+      string invite = 8;
+      string createdAt = 9;
+      string updatedAt = 10;
+      string updateBy = 11;
+      string lockAt = 12;
+}
+
+// create response
+message CreateCompanyRsp {
+}
+
+// delete request
+message DeleteCompanyByIDReq {
+  int32 id = 1;
+}
+
+// delete response
+message DeleteCompanyByIDRsp {
+
+}
+
+// delete list request
+message DeleteCompanyByIDsReq {
+  repeated int32 ids = 1;
+}
+
+// delete list response
+message DeleteCompanyByIDsRsp {
+
+}
+
+// update request
+message UpdateCompanyByIDReq {
+      int32 id = 1;
+      string companyId = 2;
+      string name = 3;
+      string shortName = 4;
+      string onwer = 5;
+      int32 status = 6;
+      int32 lockStatus = 7;
+      string invite = 8;
+      string createdAt = 9;
+      string updatedAt = 10;
+      string updateBy = 11;
+      string lockAt = 12;
+}
+
+// update response
+message UpdateCompanyByIDRsp {
+
+}
+
+// get one request
+message GetCompanyByIDReq {
+  int32 id = 1;
+}
+
+// get one response
+message GetCompanyByIDRsp {
+      int32 id = 1;
+      string companyId = 2;
+      string name = 3;
+      string shortName = 4;
+      string onwer = 5;
+      int32 status = 6;
+      int32 lockStatus = 7;
+      string invite = 8;
+      string createdAt = 9;
+      string updatedAt = 10;
+      string updateBy = 11;
+      string lockAt = 12;
+}
+
+
+// get list request
+message ListCompanyByIDsReq {
+    repeated int64 ids = 1;
+}
+
+// get list response
+message ListCompanyByIDsRsp {
+    repeated Company list = 1;
+}
+
+
+message Company {
+    int32 id = 1;
+    string companyId = 2;
+    string name = 3;
+    string shortName = 4;
+    string onwer = 5;
+    int32 status = 6;
+    int32 lockStatus = 7;
+    string invite = 8;
+    string createdAt = 9;
+    string updatedAt = 10;
+    string updateBy = 11;
+    string lockAt = 12;
+}

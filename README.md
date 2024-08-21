@@ -1,13 +1,26 @@
 # sql2pb
 
-A tool for generating proto files from mysql
+一个从mysql表结构生成protobuf文件的小工具,使用配置文件来指定表结构和生成的protobuf文件的输出目录等信息
 
-install
+安装
 ```shell
 go install github.com/mooncake9527/sql2pb
 ```
 
-generate proto files
+使用shell
 ```shell
-sql2pb proto -s root:123456@localhost:3306 -d user -o pb/user/proto -t user,user_info
+sql2pb proto -c config/config.yaml
+```
+
+配置文件 config/config.yaml
+```text
+out: ./out  # 生成文件的输出目录
+tpl: ./template/proto.tpl # 模板文件
+db:
+  host: localhost # 数据库地址
+  port: 3306  # 数据库端口
+  user: root  # 数据库用户名
+  password: xxxxx   # 数据库密码
+  schema: user  # 数据库名称
+  tables: country,user  # 数据库表,多个用逗号分隔
 ```

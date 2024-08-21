@@ -2,25 +2,22 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
+	"log/slog"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/mooncake9527/sql2pb/config"
+	"github.com/mooncake9527/x/xerrors/xerror"
+
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 const (
-	Dsn         = "%s:%s@tcp(%s:%d)/information_schema?timeout=10s&parseTime=true&charset=%s"
-	HostPattern = "^(.*)\\:(.*)\\@(.*)\\:(\\d+)$"
-	DbPattern   = "^([A-Za-z0-9_]+)$"
-	Charset     = "utf8mb4"
-	//protoTemplate = "template/proto.tpl"
+	Dsn = "%s:%s@tcp(%s:%d)/information_schema?timeout=10s&parseTime=true&charset=%s"
 )
 
 func Execute() error {
@@ -28,21 +25,8 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
-	rootCmd.Flags().StringVarP(&server, "server", "s", "", "指定服务器。(格式: <user>:<password>@<host>:<port>)")
-	rootCmd.Flags().StringVarP(&db, "db", "d", "", "指定数据库。")
 	rootCmd.Flags().StringVarP(&cfgPath, "config", "c", "", "指定配置文件路径。")
-	rootCmd.Flags().StringVarP(&out, "out", "o", "", "指定输出目录。")
-	rootCmd.Flags().StringVarP(&tables, "tables", "t", "", "指定表名。")
-	rootCmd.Flags().StringVarP(&protoTpl, "template", "p", "", "指定模板。")
-
-	cobra.CheckErr(rootCmd.MarkFlagRequired("server"))
-	cobra.CheckErr(rootCmd.MarkFlagRequired("db"))
-	cobra.CheckErr(rootCmd.MarkFlagRequired("out"))
-}
-
-func initConfig() {
+	cobra.CheckErr(rootCmd.MarkFlagRequired("config"))
 }
 
 type Config struct {
@@ -55,13 +39,8 @@ type IgnoreTable struct {
 }
 
 var (
-	wg       sync.WaitGroup
-	server   string
-	db       string
-	cfgPath  string
-	out      string
-	tables   string
-	protoTpl string
+	wg      sync.WaitGroup
+	cfgPath string
 )
 
 var rootCmd = &cobra.Command{
@@ -69,90 +48,55 @@ var rootCmd = &cobra.Command{
 	Short:   "mysql convert to proto.",
 	Version: "v1.0.0",
 	Run: func(cmd *cobra.Command, args []string) {
-		serverMatched, err := regexp.MatchString(HostPattern, server)
-		cobra.CheckErr(err)
-		dbMatched, err := regexp.MatchString(DbPattern, db)
-		cobra.CheckErr(err)
-		if !serverMatched {
-			cobra.CheckErr(fmt.Errorf("服务器 `%s` 格式错误。(正确格式: <user>:<password>@<host>:<port>)", server))
+		err := run()
+		if err != nil {
+			slog.Error(fmt.Sprintf("%+v", err))
 		}
-		if !dbMatched {
-			cobra.CheckErr(fmt.Errorf("数据库 `%s` 格式错误。", db))
-		}
-
-		var (
-			serverUser = strings.Split(server[0:strings.LastIndex(server, "@")], ":")
-			serverHost = strings.Split(server[strings.LastIndex(server, "@")+1:], ":")
-		)
-		serverDbConfig := &DbConfig{
-			User:     serverUser[0],
-			Password: serverUser[1],
-			Host:     serverHost[0],
-			Charset:  Charset,
-			Database: db,
-		}
-		serverDbConfig.Port = cast.ToInt(serverHost[1])
-		dsn := fmt.Sprintf(Dsn,
-			serverDbConfig.User, serverDbConfig.Password,
-			serverDbConfig.Host, serverDbConfig.Port,
-			serverDbConfig.Charset,
-		)
-		serverDb, err := gorm.Open(mysql.New(mysql.Config{DSN: dsn}), &gorm.Config{
-			SkipDefaultTransaction: true,
-			DisableAutomaticPing:   true,
-			Logger:                 logger.Default.LogMode(logger.Silent),
-		})
-		cobra.CheckErr(err)
-
-		var serverSchema Schema
-		serverSchemaResult := serverDb.Table("SCHEMATA").Limit(1).Find(
-			&serverSchema,
-			"SCHEMA_NAME = ?", serverDbConfig.Database,
-		)
-		if serverSchemaResult.RowsAffected <= 0 {
-			cobra.CheckErr(fmt.Sprintf("数据库 `%s` 不存在。", serverDbConfig.Database))
-		}
-
-		var serverTableData []*Table
-		queryServerTables := serverDb.Table("TABLES")
-		if tables != "" {
-			tableNames := strings.Split(tables, ",")
-			queryServerTables.Where("TABLE_NAME in ?", tableNames)
-		}
-		serverTableResult := queryServerTables.Order("TABLE_NAME ASC").Find(&serverTableData, "TABLE_SCHEMA = ?", serverDbConfig.Database)
-		if serverTableResult.RowsAffected <= 0 {
-			cobra.CheckErr(fmt.Errorf("数据库 %s 没有表。", serverDbConfig.Database))
-		}
-
-		icMap := make(map[string]*IgnoreTable, 10)
-		if cfgPath != "" {
-			var ic *Config
-			bytes, err := os.ReadFile(cfgPath)
-			cobra.CheckErr(err)
-			err = yaml.Unmarshal(bytes, &ic)
-			cobra.CheckErr(err)
-
-			for _, vv := range ic.Ignores {
-				icMap[vv.Table] = vv
-			}
-		}
-
-		_ = os.MkdirAll(out, os.ModePerm)
-
-		for _, serverTable := range serverTableData {
-			var ignoreTable = &IgnoreTable{}
-			if v, ok := icMap[serverTable.TableName]; ok {
-				ignoreTable = v
-			}
-			isContinue := true
-			if ignoreTable.Table == serverTable.TableName && len(ignoreTable.Columns) == 0 {
-				isContinue = false
-			}
-			if isContinue {
-				wg.Add(1)
-				go NewConverter(serverDbConfig, serverDb, serverTable, ignoreTable).Start()
-			}
-		}
-		wg.Wait()
 	},
+}
+
+func run() error {
+	config.Parse(cfgPath)
+	dsn := fmt.Sprintf(Dsn,
+		config.AppConfig.DB.User,
+		config.AppConfig.DB.Password,
+		config.AppConfig.DB.Host,
+		config.AppConfig.DB.Port,
+		"utf8mb4",
+	)
+	informationSchemaConn, err := gorm.Open(mysql.New(mysql.Config{DSN: dsn}), &gorm.Config{
+		SkipDefaultTransaction: true,
+		DisableAutomaticPing:   true,
+		Logger:                 logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		return xerror.New(err.Error())
+	}
+
+	var schema Schema
+	r := informationSchemaConn.Table("SCHEMATA").Limit(1).Find(&schema, "SCHEMA_NAME = ?", config.AppConfig.DB.Schema)
+	if r.RowsAffected <= 0 {
+		return xerror.Newf("数据库 `%s` 不存在。", config.AppConfig.DB.Schema)
+	}
+
+	var tables []*Table
+	q := informationSchemaConn.Table("TABLES")
+	if config.AppConfig.DB.Tables != "" {
+		tableNames := strings.Split(config.AppConfig.DB.Tables, ",")
+		q.Where("TABLE_NAME in ?", tableNames)
+	}
+	r = q.Order("TABLE_NAME ASC").Find(&tables, "TABLE_SCHEMA = ?", config.AppConfig.DB.Schema)
+	if r.RowsAffected <= 0 {
+		return xerror.Newf("数据库 `%s` 没有表。", config.AppConfig.DB.Schema)
+	}
+
+	_ = os.MkdirAll(config.AppConfig.Out, os.ModePerm)
+
+	for _, table := range tables {
+		wg.Add(1)
+		go NewConverter(informationSchemaConn, table).Start()
+	}
+	wg.Wait()
+
+	return nil
 }

@@ -3,12 +3,13 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	tmpl "github.com/mooncake9527/sql2pb/template"
-	"github.com/samber/lo"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/mooncake9527/sql2pb/config"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -17,12 +18,10 @@ import (
 )
 
 type Converter struct {
-	serverDbConfig       *DbConfig
-	serverDb             *gorm.DB
-	serverTable          *Table
-	ignoreTable          *IgnoreTable
-	serverTableColumns   []string
-	serverTableColumnMap map[string]*MySQL2ProtoColumn
+	informationSchemaConn *gorm.DB
+	table                 *Table
+	tableColumns          []string
+	serverTableColumnMap  map[string]*MySQL2ProtoColumn
 }
 
 type MySQL2ProtoColumn struct {
@@ -47,67 +46,57 @@ type ProtoColumn struct {
 }
 
 // NewConverter 新建转换器。
-func NewConverter(serverDbConfig *DbConfig, serverDb *gorm.DB, serverTable *Table, ignoreTable *IgnoreTable) *Converter {
+func NewConverter(serverDb *gorm.DB, serverTable *Table) *Converter {
 	return &Converter{
-		serverDbConfig:       serverDbConfig,
-		serverDb:             serverDb,
-		serverTable:          serverTable,
-		ignoreTable:          ignoreTable,
-		serverTableColumnMap: make(map[string]*MySQL2ProtoColumn),
+		informationSchemaConn: serverDb,
+		table:                 serverTable,
+		serverTableColumnMap:  make(map[string]*MySQL2ProtoColumn),
 	}
 }
 
-// Start 启动。
 func (c *Converter) Start() {
 	defer wg.Done()
-	switch c.serverTable.TableType {
+	switch c.table.TableType {
 	case "BASE TABLE":
 		c.create()
 	case "VIEW":
-		slog.Warn(fmt.Sprintf("表 `%s` 不支持 VIEW 转换。", c.serverTable.TableName))
+		slog.Warn(fmt.Sprintf("表 `%s` 不支持 VIEW 转换。", c.table.TableName))
 	}
 }
 
-// create 创建 PROTO。
 func (c *Converter) create() {
 	var (
-		serverColumnData []Column
+		columns []Column
 	)
 
-	serverTableColumnResult := c.serverDb.Table("COLUMNS").Order("`ORDINAL_POSITION` ASC").Find(
-		&serverColumnData, "`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?", c.serverDbConfig.Database, c.serverTable.TableName)
+	r := c.informationSchemaConn.Table("COLUMNS").Order("`ORDINAL_POSITION` ASC").Find(
+		&columns, "`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?", config.AppConfig.DB.Schema, c.table.TableName)
 
-	if serverTableColumnResult.RowsAffected == 0 {
+	if r.RowsAffected == 0 {
 		return
 	}
 
 	primaryKey := ""
 	PrimaryKeyProtoType := ""
-	for _, serverColumn := range serverColumnData {
-		_, find := lo.Find(c.ignoreTable.Columns, func(item string) bool {
-			return item == serverColumn.ColumnName
-		})
-		if find {
-			continue
-		}
-		dataType := strings.ToUpper(serverColumn.DataType)
-		c.serverTableColumns = append(c.serverTableColumns, serverColumn.ColumnName)
-		c.serverTableColumnMap[serverColumn.ColumnName] = &MySQL2ProtoColumn{
+	for _, column := range columns {
+		dataType := strings.ToUpper(column.DataType)
+		c.tableColumns = append(c.tableColumns, column.ColumnName)
+		c.serverTableColumnMap[column.ColumnName] = &MySQL2ProtoColumn{
 			DataType:      dataType,
 			ProtoDataType: c.mappingDataTypeToProtoDataType(dataType),
 		}
-		if strings.Contains(serverColumn.ColumnKey, "PR") {
-			primaryKey = serverColumn.ColumnName
-			PrimaryKeyProtoType = serverColumn.DataType
+		if strings.Contains(column.ColumnKey, "PR") {
+			primaryKey = column.ColumnName
+			PrimaryKeyProtoType = column.DataType
 		}
 	}
 
-	pt := ProtoTemplate{TableName: c.toCamelCase(c.serverTable.TableName)}
+	pt := ProtoTemplate{TableName: c.toCamelCase(c.table.TableName)}
 	pt.PrimaryKey = primaryKey
 	pt.PrimaryKeyProtoType = c.mappingDataTypeToProtoDataType(PrimaryKeyProtoType)
-	pt.PackageName = c.toCamelCaseFirstLower(c.serverDbConfig.Database)
-	pt.ServiceName = c.toCamelCaseFirstLower(c.serverTable.TableName)
-	for i, columnName := range c.serverTableColumns {
+	pt.PackageName = c.toCamelCaseFirstLower(config.AppConfig.DB.Schema)
+	pt.ServiceName = c.toCamelCaseFirstLower(c.table.TableName)
+	for i, columnName := range c.tableColumns {
 		if pc, ok := c.serverTableColumnMap[columnName]; ok {
 			protoColumn := ProtoColumn{
 				ColumnName: columnName,
@@ -124,18 +113,17 @@ func (c *Converter) create() {
 		err error
 	)
 
-	if protoTpl != "" {
-		tpl, err = template.ParseFiles(protoTpl)
-		cobra.CheckErr(err)
-	} else {
-		tpl, err = template.New("").Parse(tmpl.ProtoTemplate)
-		cobra.CheckErr(err)
-	}
+	f,err:=os.Open(config.AppConfig.Tpl)
+	cobra.CheckErr(err)
+	b,err:=io.ReadAll(f)
+	cobra.CheckErr(err)
+	tpl, err = template.New(config.AppConfig.Tpl).Parse(string(b))
+	cobra.CheckErr(err)
 	var wr bytes.Buffer
 	err = tpl.Execute(&wr, pt)
 	cobra.CheckErr(err)
-	_ = os.MkdirAll(out, os.ModePerm)
-	err = os.WriteFile(fmt.Sprintf("%s/%s.proto", out, c.serverTable.TableName), wr.Bytes(), 0644)
+	_ = os.MkdirAll(config.AppConfig.Out, os.ModePerm)
+	err = os.WriteFile(fmt.Sprintf("%s/%s.proto", config.AppConfig.Out, c.table.TableName), wr.Bytes(), 0644)
 	cobra.CheckErr(err)
 }
 

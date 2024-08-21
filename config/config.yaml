@@ -1,0 +1,9 @@
+out: ./out  # 生成文件的输出目录
+tpl: ./template/proto.tpl # 模板文件
+db:
+  host: localhost # 数据库地址
+  port: 3306  # 数据库端口
+  user: root  # 数据库用户名
+  password: xxxxx   # 数据库密码
+  schema: user  # 数据库名称
+  tables: country,user  # 数据库表,多个用逗号分隔
